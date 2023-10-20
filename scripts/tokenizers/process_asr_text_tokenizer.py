@@ -297,6 +297,7 @@ def main():
     spe_split_by_unicode_script = args.spe_split_by_unicode_script
     spe_bos, spe_eos, spe_pad = args.spe_bos, args.spe_eos, args.spe_pad
     lower_case = args.lower_case
+    use_nfkd = args.use_nfkd
 
     if not os.path.exists(data_root):
         os.makedirs(data_root)
@@ -323,6 +324,7 @@ def main():
         spe_bos=spe_bos,
         spe_eos=spe_eos,
         spe_pad=spe_pad,
+        use_nfkd=args.use_nfkd,
     )
 
     print("Serialized tokenizer at location :", tokenizer_path)
