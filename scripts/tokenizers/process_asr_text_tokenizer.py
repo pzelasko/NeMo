@@ -51,6 +51,11 @@
 #       tokenizer will emit a token equivalent to Out-Of-Vocabulary). Used primarily for the
 #       English language.
 #
+#   --use_nfkd: (requires --no_lower_case) When this flag is passed, sentencepiece will apply
+#       NFKD text normalization scheme rather than its default NFKC. This means certain composite Unicode
+#       symbols will be represented as individual symbols rather than composite symbols.
+#       Example: \u0627\u0653 and \u0622 are the same symbol; NFKD will keep the first form, NFKC the second.
+#
 #    --spe_type: The sentencepiece library has a few implementations of the tokenization technique, and
 #       spe_type refers to these implementations. Currently supported types are unigram, bpe, char, word.
 #       Defaults to bpe.
@@ -136,8 +141,9 @@ parser.add_argument(
     help="Don't use Unicode script to split sentence pieces.",
 )
 parser.add_argument('--no_lower_case', dest='lower_case', action='store_false')
+parser.add_argument('--use_nfkd', action='store_true')
 parser.add_argument("--log", action='store_true')
-parser.set_defaults(log=False, lower_case=True, spe_train_extremely_large_corpus=False)
+parser.set_defaults(log=False, lower_case=True, use_nfkd=False, spe_train_extremely_large_corpus=False)
 args = parser.parse_args()
 
 
@@ -193,6 +199,7 @@ def __process_data(
     spe_eos: bool,
     spe_pad: bool,
     lower_case: bool,
+    use_nfkd: bool,
 ):
     """
     Converts flac to wav and build manifests's json
@@ -213,7 +220,8 @@ def __process_data(
         spe_bos: Bool flag, whether to add <s> to SentencePiece tokenizer vocabulary.
         spe_eos: Bool flag, whether to add </s> to SentencePiece tokenizer vocabulary.
         spe_pad: Bool flag, whether to add <pad> to SentencePiece tokenizer vocabulary.
-        lower_case: whether to tokenize with lower case character set only (for english)
+        lower_case: whether to tokenize with lower case character set only (for english).
+        use_nfkd: whether to use NFKD rather than NFKC text normalization (requires lower_case=False).
 
     Returns:
     """
@@ -249,6 +257,7 @@ def __process_data(
             vocab_size=vocab_size,
             sample_size=spe_sample_size,
             do_lower_case=lower_case,
+            use_nfkd=use_nfkd,
             output_dir=tokenizer_dir,
             tokenizer_type=spe_type,
             character_coverage=spe_character_coverage,

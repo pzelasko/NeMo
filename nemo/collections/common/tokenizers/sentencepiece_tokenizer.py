@@ -28,7 +28,7 @@ __all__ = ['SentencePieceTokenizer', 'create_spt_model']
 class SentencePieceTokenizer(TokenizerSpec):
     """
     Sentencepiecetokenizer https://github.com/google/sentencepiece.
-    
+
         Args:
         model_path: path to sentence piece tokenizer model. To create the model use create_spt_model()
         special_tokens: either list of special tokens or dictionary of token name to token value
@@ -261,6 +261,7 @@ def create_spt_model(
     vocab_size: int,
     sample_size: int,
     do_lower_case: bool,
+    use_nfkd: bool,
     tokenizer_type: str = 'unigram',
     output_dir: Optional[str] = None,
     character_coverage: float = 1.0,
@@ -283,6 +284,7 @@ def create_spt_model(
         vocab_size: vocabulary size
         sample_size: maximum size of sentences the trainer loads
         do_lower_case: if text should be lower cased before tokenizer model is created
+        use_nfkd: whether to use NFKD rather than NFKC text normalization (requires do_lower_case=False)
         character_coverage: float value between 0 and 1 (as a percentage). For languages with a vast charset,
             can be < 1.0, but for all other languages, it should be set as 1.0
         output_dir: folder to save created tokenizer model. If not specified will store model at data_file/../spt folder
@@ -348,6 +350,13 @@ def create_spt_model(
 
     if do_lower_case:
         cmd += " --normalization_rule_name=nmt_nfkc_cf"
+
+    if use_nfkd:
+        if do_lower_case:
+            raise RuntimeError("use_nfkd=True requires do_lower_case=False (it was set to True), "
+                               "because sentencepiece does not provide 'nfkd_cf' normalization rule table.")
+        else:
+            cmd += " --normalization_rule_name=nfkd"
 
     if sample_size > 0:
         cmd += f" --input_sentence_size={sample_size}"
