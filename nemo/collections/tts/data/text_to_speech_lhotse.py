@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union, List, Literal
+from typing import Dict, Optional, Union, List, Literal, Sequence
 
 import torch.utils.data
 
@@ -24,6 +24,7 @@ class LhotseTextToSpeechDataset(torch.utils.data.Dataset):
         self,
         text_tokenizer: BaseTokenizer,
         speaker_path: Optional[Path] = None,
+        custom_fields: Optional[Sequence[str]] = ("energy", "pitch", "voiced_mask"),
         featurizers: Optional[Dict[str, Featurizer]] = None,
         feature_processors: Optional[Dict[str, FeatureProcessor]] = None,
         align_prior_hop_length: Optional[int] = None,
@@ -34,6 +35,7 @@ class LhotseTextToSpeechDataset(torch.utils.data.Dataset):
 
         super().__init__()
         self.text_tokenizer = text_tokenizer
+        self.custom_fields = custom_fields
         self.align_prior_hop_length = align_prior_hop_length
         self.audio_norm = audio_norm
         assert self.audio_norm in (
@@ -69,7 +71,7 @@ class LhotseTextToSpeechDataset(torch.utils.data.Dataset):
         return self.align_prior_hop_length is not None
 
     def __getitem__(self, cuts) -> Dict[str, Union[torch.Tensor, List[str]]]:
-        from lhotse.dataset.collation import collate_vectors
+        from lhotse.dataset.collation import collate_vectors, collate_custom_field
 
         cuts = cuts.sort_by_duration()
 
@@ -102,6 +104,10 @@ class LhotseTextToSpeechDataset(torch.utils.data.Dataset):
             "text": tokens,
             "text_lens": token_lens,
         }
+
+        for custom_field in self.custom_fields:
+            data, data_lens = collate_custom_field(cuts, custom_field, pad_value=0.0)
+            ans.update({custom_field: data, f"{custom_field}_lens": data_lens})
 
         if self.include_speaker:
             ans.update(
