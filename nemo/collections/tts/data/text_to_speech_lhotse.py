@@ -112,7 +112,7 @@ class LhotseTextToSpeechDataset(torch.utils.data.Dataset):
         if self.include_speaker:
             ans.update(
                 speaker=[cut.supervisions[0].speaker for cut in cuts],
-                speaker_index=[self.speaker_index_map[cut.supervisions[0].speaker] for cut in cuts],
+                speaker_index=torch.as_tensor([self.speaker_index_map[cut.supervisions[0].speaker] for cut in cuts]),
             )
 
         if self.include_align_prior:
