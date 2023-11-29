@@ -89,6 +89,19 @@ class EncDecCTCModelBPE(EncDecCTCModel, ASRBPEMixin):
         )
 
     def _setup_dataloader_from_config(self, config: Optional[Dict]):
+        if config.get("use_lhotse"):
+            from nemo.collections.asr.data.audio_to_text_lhotse import LhotseSpeechToTextBpeDataset
+            from nemo.collections.common.data.lhotse import get_lhotse_dataloader_from_config
+
+            return get_lhotse_dataloader_from_config(
+                config,
+                global_rank=self.global_rank,
+                world_size=self.world_size,
+                dataset=LhotseSpeechToTextBpeDataset(
+                    tokenizer=self.tokenizer, noise_cuts=config.get("lhotse", {}).get("noise_cuts")
+                ),
+            )
+
         dataset = audio_to_text_dataset.get_audio_to_text_bpe_dataset_from_config(
             config=config,
             local_rank=self.local_rank,
@@ -603,6 +616,13 @@ class EncDecCTCModelBPE(EncDecCTCModel, ASRBPEMixin):
             pretrained_model_name="stt_en_fastconformer_ctc_large",
             description="For details about this model, please visit https://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_en_fastconformer_ctc_large",
             location="https://api.ngc.nvidia.com/v2/models/nvidia/nemo/stt_en_fastconformer_ctc_large/versions/1.0.0/files/stt_en_fastconformer_ctc_large.nemo",
+        )
+        results.append(model)
+
+        model = PretrainedModelInfo(
+            pretrained_model_name="stt_en_fastconformer_ctc_large_ls",
+            description="For details about this model, please visit https://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_en_fastconformer_ctc_large_ls",
+            location="https://api.ngc.nvidia.com/v2/models/nvidia/nemo/stt_en_fastconformer_ctc_large_ls/versions/1.0.0/files/stt_en_fastconformer_ctc_large_ls.nemo",
         )
         results.append(model)
 

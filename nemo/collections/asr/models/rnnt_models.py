@@ -16,7 +16,7 @@ import copy
 import json
 import os
 import tempfile
-from math import ceil, isclose
+from math import ceil
 from typing import Dict, List, Optional, Tuple, Union
 
 import torch
@@ -32,7 +32,6 @@ from nemo.collections.asr.models.asr_model import ASRModel, ExportableEncDecMode
 from nemo.collections.asr.modules.rnnt import RNNTDecoderJoint
 from nemo.collections.asr.parts.mixins import ASRModuleMixin
 from nemo.collections.asr.parts.utils.audio_utils import ChannelSelectorType
-from nemo.core.classes import Exportable
 from nemo.core.classes.common import PretrainedModelInfo, typecheck
 from nemo.core.classes.mixins import AccessMixin
 from nemo.core.neural_types import AcousticEncodedRepresentation, AudioSignal, LengthsType, NeuralType, SpectrogramType
@@ -459,6 +458,28 @@ class EncDecRNNTModel(ASRModel, ASRModuleMixin, ExportableEncDecModel):
         # Automatically inject args from model config to dataloader config
         audio_to_text_dataset.inject_dataloader_value_from_model_config(self.cfg, config, key='sample_rate')
         audio_to_text_dataset.inject_dataloader_value_from_model_config(self.cfg, config, key='labels')
+
+        if config.get("use_lhotse"):
+            from nemo.collections.asr.data.audio_to_text_lhotse import LhotseSpeechToTextBpeDataset
+            from nemo.collections.common.data.lhotse import get_lhotse_dataloader_from_config
+            from nemo.collections.common.parts.preprocessing.parsers import make_parser
+
+            return get_lhotse_dataloader_from_config(
+                config,
+                global_rank=self.global_rank,
+                world_size=self.world_size,
+                dataset=LhotseSpeechToTextBpeDataset(
+                    tokenizer=make_parser(
+                        labels=config.get('labels', None),
+                        name=config.get('parser', 'en'),
+                        unk_id=config.get('unk_index', -1),
+                        blank_id=config.get('blank_index', -1),
+                        do_normalize=config.get('normalize_transcripts', False),
+                    ),
+                    noise_cuts=config.get("lhotse", {}).get("noise_cuts"),
+                ),
+            )
+
         dataset = audio_to_text_dataset.get_audio_to_text_char_dataset_from_config(
             config=config,
             local_rank=self.local_rank,
@@ -772,7 +793,7 @@ class EncDecRNNTModel(ASRModel, ASRModuleMixin, ExportableEncDecModel):
         sample_id = sample_id.cpu().detach().numpy()
         return list(zip(sample_id, best_hyp_text))
 
-    def validation_step(self, batch, batch_idx, dataloader_idx=0):
+    def validation_pass(self, batch, batch_idx, dataloader_idx=0):
         signal, signal_len, transcript, transcript_len = batch
 
         # forward() only performs encoder forward
@@ -835,15 +856,21 @@ class EncDecRNNTModel(ASRModel, ASRModuleMixin, ExportableEncDecModel):
 
         return tensorboard_logs
 
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
+        metrics = self.validation_pass(batch, batch_idx, dataloader_idx)
+        if type(self.trainer.val_dataloaders) == list and len(self.trainer.val_dataloaders) > 1:
+            self.validation_step_outputs[dataloader_idx].append(metrics)
+        else:
+            self.validation_step_outputs.append(metrics)
+        return metrics
+
     def test_step(self, batch, batch_idx, dataloader_idx=0):
-        logs = self.validation_step(batch, batch_idx, dataloader_idx=dataloader_idx)
-        test_logs = {
-            'test_wer_num': logs['val_wer_num'],
-            'test_wer_denom': logs['val_wer_denom'],
-            # 'test_wer': logs['val_wer'],
-        }
-        if 'val_loss' in logs:
-            test_logs['test_loss'] = logs['val_loss']
+        logs = self.validation_pass(batch, batch_idx, dataloader_idx=dataloader_idx)
+        test_logs = {name.replace("val_", "test_"): value for name, value in logs.items()}
+        if type(self.trainer.test_dataloaders) == list and len(self.trainer.test_dataloaders) > 1:
+            self.test_step_outputs[dataloader_idx].append(test_logs)
+        else:
+            self.test_step_outputs.append(test_logs)
         return test_logs
 
     def multi_validation_epoch_end(self, outputs, dataloader_idx: int = 0):

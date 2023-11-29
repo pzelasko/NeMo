@@ -148,6 +148,27 @@ class SpeechEncDecSelfSupervisedModel(ModelPT, ASRModuleMixin, AccessMixin):
         # Automatically inject args from model config to dataloader config
         audio_to_text_dataset.inject_dataloader_value_from_model_config(self.cfg, config, key='sample_rate')
 
+        if config.get("use_lhotse"):
+            from nemo.collections.asr.data.audio_to_text_lhotse import LhotseSpeechToTextBpeDataset
+            from nemo.collections.common.data.lhotse import get_lhotse_dataloader_from_config
+            from nemo.collections.common.parts.preprocessing.parsers import make_parser
+
+            return get_lhotse_dataloader_from_config(
+                config,
+                global_rank=self.global_rank,
+                world_size=self.world_size,
+                dataset=LhotseSpeechToTextBpeDataset(
+                    tokenizer=make_parser(
+                        labels=config.get('labels', None),
+                        name=config.get('parser', 'en'),
+                        unk_id=config.get('unk_index', -1),
+                        blank_id=config.get('blank_index', -1),
+                        do_normalize=config.get('normalize_transcripts', False),
+                    ),
+                    noise_cuts=config.get("lhotse", {}).get("noise_cuts"),
+                ),
+            )
+
         shuffle = config['shuffle']
         device = 'gpu' if torch.cuda.is_available() else 'cpu'
         if config.get('use_dali', False):
@@ -527,7 +548,7 @@ class SpeechEncDecSelfSupervisedModel(ModelPT, ASRModuleMixin, AccessMixin):
 
         return {'loss': loss_value, 'log': tensorboard_logs}
 
-    def validation_step(self, batch, batch_idx, dataloader_idx=0):
+    def validation_pass(self, batch, batch_idx, dataloader_idx=0):
         # Set flag to register tensors
         self._in_validation_step = True
 
@@ -554,9 +575,17 @@ class SpeechEncDecSelfSupervisedModel(ModelPT, ASRModuleMixin, AccessMixin):
         self.reset_registry()
         del self._in_validation_step
 
-        return {
-            'val_loss': loss_value,
-        }
+        metrics = {'val_loss': loss_value}
+
+        return metrics
+
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
+        metrics = self.validation_pass(batch, batch_idx, dataloader_idx)
+        if type(self.trainer.val_dataloaders) == list and len(self.trainer.val_dataloaders) > 1:
+            self.validation_step_outputs[dataloader_idx].append(metrics)
+        else:
+            self.validation_step_outputs.append(metrics)
+        return metrics
 
     def multi_validation_epoch_end(self, outputs, dataloader_idx: int = 0):
         val_loss_mean = torch.stack([x['val_loss'] for x in outputs]).mean()
