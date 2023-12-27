@@ -21,7 +21,7 @@ class LhotseDataLoadingConfig:
     # 1. Data inputs.
     #   a. "Classic" NeMo input path fields.
     manifest_filepath: Any = None  # str | list[list[str | float]] | None = None
-    tarred_audio_filepath: Any = None  # str | list[list[str]] | None = None
+    tarred_audio_filepaths: Any = None  # str | list[list[str]] | None = None
     #   b. Lhotse CutSet manifest / Lhotse Shar tar dir paths.
     cuts_path: str | None = None
     shar_path: Any = None  # str | list[str | tuple[str, float | int]] | None = None
