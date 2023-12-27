@@ -15,14 +15,14 @@ def read_cutset_from_config(config) -> Tuple[LhotseCutSet, bool]:
     Returns a tuple of ``CutSet`` and a boolean indicating whether the data is tarred (True) or not (False).
     """
     # First, we'll figure out if we should read Lhotse manifest or NeMo manifest.
-    use_nemo_manifest = all(config.get(opt) is None for opt in ("cuts_path", "shar_path"))
+    use_nemo_manifest = all(config[opt] is None for opt in ("cuts_path", "shar_path"))
     if use_nemo_manifest:
         assert (
-            config.get("manifest_filepath") is not None
+            config.manifest_filepath is not None
         ), "You must specify either: manifest_filepath, lhotse.cuts_path, or lhotse.shar_path"
-        is_tarred = config.get("tarred_audio_filepaths") is not None
+        is_tarred = config.tarred_audio_filepaths is not None
     else:
-        is_tarred = config.get("shar_path") is not None
+        is_tarred = config.shar_path is not None
     if use_nemo_manifest:
         # Read NeMo manifest -- use the right wrapper depending on tarred/non-tarred.
         cuts = read_nemo_manifest(config, is_tarred)
@@ -50,8 +50,8 @@ def read_lhotse_manifest(config, is_tarred: bool) -> LhotseCutSet:
         #   to observe different data examples than in the previous run.
         # - integer means we'll set a specific seed in every worker, and data would be duplicated across them.
         #   This is mostly useful for unit testing or debugging.
-        shard_seed = config.get("shard_seed", "trng")
-        if config.get("cuts_path") is not None:
+        shard_seed = config.shard_seed
+        if config.cuts_path is not None:
             warnings.warn("Note: lhotse.cuts_path will be ignored because lhotse.shar_path was provided.")
         if isinstance(config.shar_path, (str, Path)):
             logging.info(
@@ -95,21 +95,19 @@ def read_nemo_manifest(config, is_tarred: bool) -> LhotseCutSet:
     from lhotse import CutSet
 
     common_kwargs = {
-        "text_field": config.get("text_field", "text"),
-        "lang_field": config.get("lang_field", "lang"),
+        "text_field": config.text_field,
+        "lang_field": config.lang_field,
     }
-    shuffle = config.get("shuffle", False)
-
     if is_tarred:
-        if isinstance(config["manifest_filepath"], (str, Path)):
+        if isinstance(config.manifest_filepath, (str, Path)):
             logging.info(
-                f"Initializing Lhotse CutSet from a single NeMo manifest (tarred): '{config['manifest_filepath']}'"
+                f"Initializing Lhotse CutSet from a single NeMo manifest (tarred): '{config.manifest_filepath}'"
             )
             cuts = CutSet(
                 LazyNeMoTarredIterator(
-                    config["manifest_filepath"],
-                    tar_paths=config["tarred_audio_filepaths"],
-                    shuffle_shards=shuffle,
+                    config.manifest_filepath,
+                    tar_paths=config.tarred_audio_filepaths,
+                    shuffle_shards=config.shuffle,
                     **common_kwargs,
                 )
             )
@@ -130,12 +128,12 @@ def read_nemo_manifest(config, is_tarred: bool) -> LhotseCutSet:
             )
             cutsets = []
             weights = []
-            for manifest_info, (tar_path,) in zip(config["manifest_filepath"], config["tarred_audio_filepaths"]):
+            for manifest_info, (tar_path,) in zip(config.manifest_filepath, config.tarred_audio_filepaths):
                 if len(manifest_info) == 1:
                     (manifest_path,) = manifest_info
                     cs = CutSet(
                         LazyNeMoTarredIterator(
-                            manifest_path=manifest_path, tar_paths=tar_path, shuffle_shards=shuffle, **common_kwargs
+                            manifest_path=manifest_path, tar_paths=tar_path, shuffle_shards=config.shuffle, **common_kwargs
                         )
                     )
                     weight = len(cs)
@@ -153,7 +151,7 @@ def read_nemo_manifest(config, is_tarred: bool) -> LhotseCutSet:
                     manifest_path, weight = manifest_info
                     cs = CutSet(
                         LazyNeMoTarredIterator(
-                            manifest_path=manifest_path, tar_paths=tar_path, shuffle_shards=shuffle, **common_kwargs
+                            manifest_path=manifest_path, tar_paths=tar_path, shuffle_shards=config.shuffle, **common_kwargs
                         )
                     )
                 logging.info(f"- {manifest_path=} {weight=}")
@@ -162,7 +160,7 @@ def read_nemo_manifest(config, is_tarred: bool) -> LhotseCutSet:
             cuts = CutSet.mux(*cutsets, weights=weights)
     else:
         logging.info(
-            f"Initializing Lhotse CutSet from a single NeMo manifest (non-tarred): '{config['manifest_filepath']}'"
+            f"Initializing Lhotse CutSet from a single NeMo manifest (non-tarred): '{config.manifest_filepath}'"
         )
-        cuts = CutSet(LazyNeMoIterator(config["manifest_filepath"], **common_kwargs))
+        cuts = CutSet(LazyNeMoIterator(config.manifest_filepath, **common_kwargs))
     return cuts
