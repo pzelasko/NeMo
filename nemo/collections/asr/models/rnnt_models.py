@@ -476,7 +476,6 @@ class EncDecRNNTModel(ASRModel, ASRModuleMixin, ExportableEncDecModel):
                         blank_id=config.get('blank_index', -1),
                         do_normalize=config.get('normalize_transcripts', False),
                     ),
-                    noise_cuts=config.get("lhotse", {}).get("noise_cuts"),
                 ),
             )
 

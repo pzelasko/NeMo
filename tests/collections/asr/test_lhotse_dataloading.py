@@ -128,21 +128,20 @@ class UnsupervisedAudioDataset(torch.utils.data.Dataset):
 def test_dataloader_from_lhotse_cuts(cutset_path: Path):
     config = OmegaConf.create(
         {
+            "cuts_path": cutset_path,
             "sample_rate": 16000,
             "shuffle": True,
             "use_lhotse": True,
             "num_workers": 0,
-            "lhotse": {
-                "cuts_path": cutset_path,
-                "use_bucketing": True,
-                "num_buckets": 2,
-                "drop_last": False,
-                "batch_duration": 4.0,  # seconds
-                "quadratic_duration": 15.0,  # seconds
-                "shuffle_buffer_size": 10,
-                "buffer_size": 100,
-                "seed": 0,
-            },
+            # lhotse specific
+            "use_bucketing": True,
+            "num_buckets": 2,
+            "drop_last": False,
+            "batch_duration": 4.0,  # seconds
+            "quadratic_duration": 15.0,  # seconds
+            "shuffle_buffer_size": 10,
+            "bucket_buffer_size": 100,
+            "seed": 0,
         }
     )
 
@@ -173,22 +172,21 @@ def test_dataloader_from_lhotse_cuts(cutset_path: Path):
 def test_dataloader_from_lhotse_shar_cuts(cutset_shar_path: Path):
     config = OmegaConf.create(
         {
+            "shar_path": cutset_shar_path,
             "sample_rate": 16000,
             "shuffle": True,
             "use_lhotse": True,
             "num_workers": 0,
-            "lhotse": {
-                "shar_path": cutset_shar_path,
-                "use_bucketing": True,
-                "num_buckets": 2,
-                "drop_last": False,
-                "batch_duration": 4.0,  # seconds
-                "quadratic_duration": 15.0,  # seconds
-                "shuffle_buffer_size": 10,
-                "buffer_size": 100,
-                "seed": 0,
-                "shar_seed": 0,
-            },
+            # lhotse specific
+            "use_bucketing": True,
+            "num_buckets": 2,
+            "drop_last": False,
+            "batch_duration": 4.0,  # seconds
+            "quadratic_duration": 15.0,  # seconds
+            "shuffle_buffer_size": 10,
+            "bucket_buffer_size": 100,
+            "seed": 0,
+            "shard_seed": 0,
         }
     )
 
@@ -225,16 +223,15 @@ def test_dataloader_from_nemo_manifest(nemo_manifest_path: Path):
             "shuffle": True,
             "use_lhotse": True,
             "num_workers": 0,
-            "lhotse": {
-                "use_bucketing": True,
-                "num_buckets": 2,
-                "drop_last": False,
-                "batch_duration": 4.0,  # seconds
-                "quadratic_duration": 15.0,  # seconds
-                "shuffle_buffer_size": 10,
-                "buffer_size": 100,
-                "seed": 0,
-            },
+            # lhotse specific
+            "use_bucketing": True,
+            "num_buckets": 2,
+            "drop_last": False,
+            "batch_duration": 4.0,  # seconds
+            "quadratic_duration": 15.0,  # seconds
+            "shuffle_buffer_size": 10,
+            "buffer_size": 100,
+            "seed": 0,
         }
     )
 
@@ -270,12 +267,11 @@ def test_dataloader_from_nemo_manifest_has_custom_fields(nemo_manifest_path: Pat
             "shuffle": True,
             "use_lhotse": True,
             "num_workers": 0,
-            "lhotse": {
-                "use_bucketing": False,
-                "batch_duration": 4.0,  # seconds
-                "shuffle_buffer_size": 10,
-                "seed": 0,
-            },
+            # lhotse specific
+            "use_bucketing": False,
+            "batch_duration": 4.0,  # seconds
+            "shuffle_buffer_size": 10,
+            "seed": 0,
         }
     )
 
@@ -301,16 +297,15 @@ def test_dataloader_from_tarred_nemo_manifest(nemo_tarred_manifest_path: tuple[s
             "shuffle": True,
             "use_lhotse": True,
             "num_workers": 0,
-            "lhotse": {
-                "use_bucketing": True,
-                "num_buckets": 2,
-                "drop_last": False,
-                "batch_duration": 4.0,  # seconds
-                "quadratic_duration": 15.0,  # seconds
-                "shuffle_buffer_size": 10,
-                "buffer_size": 100,
-                "seed": 0,
-            },
+            # lhotse specific
+            "use_bucketing": True,
+            "num_buckets": 2,
+            "drop_last": False,
+            "batch_duration": 4.0,  # seconds
+            "quadratic_duration": 15.0,  # seconds
+            "shuffle_buffer_size": 10,
+            "bucket_buffer_size": 100,
+            "seed": 0,
         }
     )
 
@@ -348,16 +343,15 @@ def test_dataloader_from_tarred_nemo_manifest_weighted_combination(nemo_tarred_m
             "shuffle": True,
             "use_lhotse": True,
             "num_workers": 0,
-            "lhotse": {
-                "use_bucketing": True,
-                "num_buckets": 2,
-                "drop_last": False,
-                "batch_duration": 4.0,  # seconds
-                "quadratic_duration": 15.0,  # seconds
-                "shuffle_buffer_size": 10,
-                "buffer_size": 100,
-                "seed": 0,
-            },
+            # lhotse specific
+            "use_bucketing": True,
+            "num_buckets": 2,
+            "drop_last": False,
+            "batch_duration": 4.0,  # seconds
+            "quadratic_duration": 15.0,  # seconds
+            "shuffle_buffer_size": 10,
+            "bucket_buffer_size": 100,
+            "seed": 0,
         }
     )
 
@@ -380,16 +374,15 @@ def test_dataloader_from_tarred_nemo_manifest_multi(nemo_tarred_manifest_path_mu
             "shuffle": True,
             "use_lhotse": True,
             "num_workers": 0,
-            "lhotse": {
-                "use_bucketing": True,
-                "num_buckets": 2,
-                "drop_last": False,
-                "batch_duration": 4.0,  # seconds
-                "quadratic_duration": 15.0,  # seconds
-                "shuffle_buffer_size": 10,
-                "buffer_size": 100,
-                "seed": 0,
-            },
+            # lhotse specific
+            "use_bucketing": True,
+            "num_buckets": 2,
+            "drop_last": False,
+            "batch_duration": 4.0,  # seconds
+            "quadratic_duration": 15.0,  # seconds
+            "shuffle_buffer_size": 10,
+            "bucket_buffer_size": 100,
+            "seed": 0,
         }
     )
 
@@ -426,22 +419,21 @@ def test_dataloader_from_lhotse_shar_cuts_combine_datasets_unweighted(
     """
     config = OmegaConf.create(
         {
+            "shar_path": [cutset_shar_path, cutset_shar_path_other],
             "sample_rate": 16000,
             "shuffle": True,
             "use_lhotse": True,
             "num_workers": 0,
-            "lhotse": {
-                "shar_path": [cutset_shar_path, cutset_shar_path_other],
-                "use_bucketing": True,
-                "num_buckets": 2,
-                "drop_last": False,
-                "batch_duration": 4.0,  # seconds
-                "quadratic_duration": 15.0,  # seconds
-                "shuffle_buffer_size": 10,
-                "buffer_size": 100,
-                "seed": 0,
-                "shar_seed": 0,
-            },
+            # lhotse specific
+            "use_bucketing": True,
+            "num_buckets": 2,
+            "drop_last": False,
+            "batch_duration": 4.0,  # seconds
+            "quadratic_duration": 15.0,  # seconds
+            "shuffle_buffer_size": 10,
+            "bucket_buffer_size": 100,
+            "seed": 0,
+            "shar_seed": 0,
         }
     )
 
@@ -479,22 +471,21 @@ def test_dataloader_from_lhotse_shar_cuts_combine_datasets_weighted(
     """
     config = OmegaConf.create(
         {
+            "shar_path": [[cutset_shar_path, 90], [cutset_shar_path_other, 10]],
             "sample_rate": 16000,
             "shuffle": True,
             "use_lhotse": True,
             "num_workers": 0,
-            "lhotse": {
-                "shar_path": [[cutset_shar_path, 90], [cutset_shar_path_other, 10]],
-                "use_bucketing": True,
-                "num_buckets": 2,
-                "drop_last": False,
-                "batch_duration": 4.0,  # seconds
-                "quadratic_duration": 15.0,  # seconds
-                "shuffle_buffer_size": 10,
-                "buffer_size": 100,
-                "seed": 0,
-                "shar_seed": 0,
-            },
+            # lhotse specific
+            "use_bucketing": True,
+            "num_buckets": 2,
+            "drop_last": False,
+            "batch_duration": 4.0,  # seconds
+            "quadratic_duration": 15.0,  # seconds
+            "shuffle_buffer_size": 10,
+            "bucket_buffer_size": 100,
+            "seed": 0,
+            "shar_seed": 0,
         }
     )
 
@@ -538,7 +529,10 @@ def test_dataloader_from_nemo_manifest_with_text_field(nemo_manifest_path: Path,
             "shuffle": True,
             "use_lhotse": True,
             "num_workers": 0,
-            "lhotse": {"use_bucketing": False, "max_cuts": 2, **kwarg},
+            # lhotse specific
+            "use_bucketing": False,
+            "max_cuts": 2,
+            **kwarg
         }
     )
 
@@ -562,7 +556,10 @@ def test_dataloader_from_nemo_manifest_with_lang_field(nemo_manifest_path: Path,
             "shuffle": True,
             "use_lhotse": True,
             "num_workers": 0,
-            "lhotse": {"use_bucketing": False, "max_cuts": 2, **kwarg},
+            # lhotse specific
+            "use_bucketing": False,
+            "max_cuts": 2,
+            **kwarg
         }
     )
 
