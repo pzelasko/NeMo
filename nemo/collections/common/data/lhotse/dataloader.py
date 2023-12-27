@@ -47,6 +47,7 @@ class LhotseDataLoadingConfig:
     min_duration: float | None = -1
     max_duration: float | None = float("inf")
     seed: int = 0
+    num_workers: int = 0
     pin_memory: bool = False
     # 4. Optional Lhotse data augmentation.
     #   a. On-the-fly noise/audio mixing.
