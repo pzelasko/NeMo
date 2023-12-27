@@ -529,9 +529,9 @@ def test_dataloader_from_nemo_manifest_with_text_field(nemo_manifest_path: Path,
             "shuffle": True,
             "use_lhotse": True,
             "num_workers": 0,
+            "batch_size": 2,
             # lhotse specific
             "use_bucketing": False,
-            "max_cuts": 2,
             **kwarg
         }
     )
@@ -556,9 +556,9 @@ def test_dataloader_from_nemo_manifest_with_lang_field(nemo_manifest_path: Path,
             "shuffle": True,
             "use_lhotse": True,
             "num_workers": 0,
+            "batch_size": 2,
             # lhotse specific
             "use_bucketing": False,
-            "max_cuts": 2,
             **kwarg
         }
     )
