@@ -56,6 +56,11 @@ class LhotseDataLoadingConfig:
     noise_mix_prob: float = 0.5
     #   b. On-the-fly 3-way speed perturbation.
     perturb_speed: bool = False
+    #   c. Cut concatenation (glue together multiple utterances into a single one)
+    concatenate_samples: bool = False
+    concatenate_gap_seconds: float = 0.1
+    concatenate_duration_factor: float = 1.0
+    concatenate_merge_supervisions: bool = True
     # 5. Other Lhotse options.
     text_field: str = "text"  # key to read the transcript from
     lang_field: str = "lang"  # key to read the language tag from
@@ -79,7 +84,13 @@ def get_lhotse_dataloader_from_config(config, global_rank: int, world_size: int,
     logging.info("We will be using a Lhotse DataLoader.")
 
     from lhotse import CutSet
-    from lhotse.dataset import DynamicBucketingSampler, DynamicCutSampler, IterableDatasetWrapper, make_worker_init_fn
+    from lhotse.dataset import (
+        CutConcatenate,
+        DynamicBucketingSampler,
+        DynamicCutSampler,
+        IterableDatasetWrapper,
+        make_worker_init_fn,
+    )
 
     config = make_structured_with_schema_warnings(config)
 
@@ -157,6 +168,23 @@ def get_lhotse_dataloader_from_config(config, global_rank: int, world_size: int,
             world_size=1 if is_tarred else world_size,
         )
 
+    if config.concatenate_samples:
+        # Cut concatenation will produce longer samples out of shorter samples
+        # by gluing them together from the shortest to longest not to exceed a duration
+        # of longest_cut * duration_factor (greedy knapsack algorithm for minimizing padding).
+        # Useful e.g. for simulated code-switching in multilingual setups.
+        # We follow concatenation by ``merge_supervisions`` which creates a single supervision
+        # object with texts joined by a whitespace so that "regular" dataset classes don't
+        # have to add a special support for multi-supervision cuts.
+        sampler = sampler.map(
+            CutConcatenate(
+                gap=config.concatenate_gap_seconds,
+                duration_factor=config.concatenate_duration_factor,
+            )
+        )
+        if config.concatenate_merge_supervisions:
+            sampler = sampler.map(lambda cuts: cuts.merge_supervisions())
+
     # 4. Creating dataloader.
     if is_tarred:
         # Wrapper here is necessary when using NeMo tarred data or Lhotse Shar data,
@@ -214,3 +242,4 @@ def make_structured_with_schema_warnings(config):
     config = OmegaConf.masked_copy(config, list(supported_keys))
 
     return OmegaConf.merge(default, config)
+
