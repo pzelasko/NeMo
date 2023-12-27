@@ -9,15 +9,14 @@ from nemo.collections.common.data.lhotse.cutset import read_cutset_from_config
 
 def get_lhotse_dataloader_from_config(config, global_rank: int, world_size: int, dataset: torch.utils.data.Dataset):
     """
-    Setup a Lhotse training dataloder.
+    Set up a Lhotse training dataloder.
 
     Expects a typical NeMo dataset configuration format, with additional fields: "use_lhotse=True" and "lhotse: <dict>".
-    Some fields in the original NeMo configuration are ignored (e.g. ``batch_size``).
-    To learn about lhotse specific parameters, search this code for ``config.lhotse``.
+    Some fields in the original NeMo configuration may be ignored.
 
     The ``dataset`` parameter should be an instance of a Lhotse-compatible PyTorch Dataset class.
     It only needs to define the following method ``__getitem__(self, cuts: CutSet) -> Dict[str, torch.Tensor]``.
-    This dataset is not expected to refer to any actual data; it may be interpreted as a function
+    This dataset is not expected to hold a reference to any actual data; it may be interpreted as a function
     mapping a Lhotse CutSet into a mini-batch of tensors.
 
     For example, see: :class:`nemo.collections.asr.data.audio_to_text_lhotse.LhotseSpeechToTextBpeDataset`,
@@ -42,56 +41,71 @@ def get_lhotse_dataloader_from_config(config, global_rank: int, world_size: int,
     # that would make Lhotse complain otherwise.
     cuts = cuts.modify_ids(create_id_randomizer(config.get("seed", 0)))
 
-    # 2. Optional on-the-fly speed perturbation,
+    # 2. Optional augmentations.
+    # 2.a. Noise mixing.
+    if (noise_path := config.get("noise_cuts")) is not None:
+        noise = CutSet.from_file(noise_path)
+        snr = config.get("noise_snr", [10, 20])
+        if not isinstance(snr, (list, tuple)):
+            snr = tuple(snr)  # convert omegaconf.ListConfig -> tuple
+        cuts = cuts.mix(cuts=noise, snr=snr, mix_prob=config.get("mix_prob", 0.5), seed="trng", random_mix_offset=True)
+
+    # 2.b. On-the-fly speed perturbation.
     #    mux here ensures it's uniformly distributed throughout sampling,
     #    and applying it here (before sampler/dataset) ensures optimal
     #    bucket allocation.
-    if config.lhotse.get("perturb_speed", False):
+    if config.get("perturb_speed", False):
         cuts = CutSet.mux(cuts, cuts.perturb_speed(0.9), cuts.perturb_speed(1.1),)
 
     # 3. The sampler.
-    batch_duration = config.lhotse.get("batch_duration", None)
-    max_cuts = config.lhotse.get("max_cuts", None)
-    if config.lhotse.get("use_bucketing", True):
+    batch_duration = config.get("batch_duration", None)
+    max_cuts = config.get("batch_size", None)
+    seed = config.get("seed", 0)
+    shuffle = config.get("shuffle", False)
+    drop_last = config.get("drop_last", True)
+    shuffle_buffer_size = config.get("shuffle_buffer_size", 10000)
+    quadratic_duration = config.get("quadratic_duration", None)
+    if config.get("use_bucketing", True):
         # Bucketing. Some differences from NeMo's native bucketing:
-        #    - we can tweak the number of buckets without triggering a full data copy
+        #    - we can tweak the number of buckets and bucket duration bins using the configuration
         #    - batch size is dynamic and configurable via a single param: max_duration (config: batch_duration)
-        #    - quadratic_duraion introduces a penalty useful to balance batch sizes for quadratic time complexity models
+        #    - quadratic_duration introduces a penalty to balance batch sizes for quadratic time complexity models
         logging.info(
-            f"Creating a Lhotse DynamicBucketingSampler (batch_duration={batch_duration} max_cuts={max_cuts})"
+            f"Creating a Lhotse DynamicBucketingSampler (max_batch_duration={batch_duration} max_batch_size={max_cuts})"
         )
         sampler = DynamicBucketingSampler(
             cuts,
             max_duration=batch_duration,
             max_cuts=max_cuts,
-            num_buckets=config.lhotse.get("num_buckets", 10),
-            shuffle=config.get("shuffle", False),
-            drop_last=config.lhotse.get("drop_last", True),
-            duration_bins=config.lhotse.get("duration_bins", None),
-            num_cuts_for_bins_estimate=config.lhotse.get("num_cuts_for_bins_estimate", 10000),
-            buffer_size=config.lhotse.get("buffer_size", 10000),
-            shuffle_buffer_size=config.lhotse.get("shuffle_buffer_size", 10000),
-            quadratic_duration=config.lhotse.get("quadratic_duration", None),
-            seed=config.lhotse.get("seed", 0),
+            shuffle=shuffle,
+            drop_last=drop_last,
+            shuffle_buffer_size=shuffle_buffer_size,
+            quadratic_duration=quadratic_duration,
+            seed=seed,
+            num_buckets=config.get("num_buckets", 10),
+            duration_bins=config.get("bucket_duration_bins", None),
+            num_cuts_for_bins_estimate=config.get("num_cuts_for_bins_estimate", 10000),
+            buffer_size=config.get("bucket_buffer_size", 10000),
             rank=0 if is_tarred else global_rank,
             world_size=1 if is_tarred else world_size,
         )
     else:
-        # Non-bucketing, similar to NeMo's regular non-tarred manifests,
+        # Non-bucketing sampler, similar to original NeMo dataloading without bucketing,
         # but we also use batch_duration instead of batch_size here.
         # Recommended for dev/test.
         logging.info(
             f"Creating a Lhotse DynamicCutSampler (bucketing is disabled, "
-            f"batch_duration={batch_duration} max_cuts={max_cuts})"
+            f"(max_batch_duration={batch_duration} max_batch_size={max_cuts})"
         )
         sampler = DynamicCutSampler(
             cuts,
             max_duration=batch_duration,
             max_cuts=max_cuts,
-            shuffle=config.get("shuffle", False),
-            drop_last=config.lhotse.get("drop_last", True),
-            shuffle_buffer_size=config.lhotse.get("shuffle_buffer_size", 10000),
-            seed=config.lhotse.get("seed", 0),
+            shuffle=shuffle,
+            drop_last=drop_last,
+            shuffle_buffer_size=shuffle_buffer_size,
+            quadratic_duration=quadratic_duration,
+            seed=seed,
             rank=0 if is_tarred else global_rank,
             world_size=1 if is_tarred else world_size,
         )

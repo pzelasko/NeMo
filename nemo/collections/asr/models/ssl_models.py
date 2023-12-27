@@ -165,7 +165,6 @@ class SpeechEncDecSelfSupervisedModel(ModelPT, ASRModuleMixin, AccessMixin):
                         blank_id=config.get('blank_index', -1),
                         do_normalize=config.get('normalize_transcripts', False),
                     ),
-                    noise_cuts=config.get("lhotse", {}).get("noise_cuts"),
                 ),
             )
 
