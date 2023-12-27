@@ -147,7 +147,7 @@ def get_lhotse_dataloader_from_config(config, global_rank: int, world_size: int,
         sampler = DynamicCutSampler(
             cuts,
             max_duration=config.batch_duration,
-            max_cuts=config.max_cuts,
+            max_cuts=config.batch_size,
             shuffle=config.shuffle,
             drop_last=config.drop_last,
             shuffle_buffer_size=config.shuffle_buffer_size,
