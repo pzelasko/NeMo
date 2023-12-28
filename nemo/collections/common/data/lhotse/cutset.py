@@ -131,12 +131,10 @@ def read_nemo_manifest(config, is_tarred: bool) -> LhotseCutSet:
             for manifest_info, (tar_path,) in zip(config.manifest_filepath, config.tarred_audio_filepaths):
                 if len(manifest_info) == 1:
                     (manifest_path,) = manifest_info
-                    cs = CutSet(
-                        LazyNeMoTarredIterator(
-                            manifest_path=manifest_path, tar_paths=tar_path, shuffle_shards=config.shuffle, **common_kwargs
-                        )
+                    nemo_iter = LazyNeMoTarredIterator(
+                        manifest_path=manifest_path, tar_paths=tar_path, shuffle_shards=config.shuffle, **common_kwargs
                     )
-                    weight = len(cs)
+                    weight = len(nemo_iter)
                 else:
                     assert (
                         isinstance(manifest_info, Sequence)
@@ -149,15 +147,26 @@ def read_nemo_manifest(config, is_tarred: bool) -> LhotseCutSet:
                         f"We got: '{manifest_info}'"
                     )
                     manifest_path, weight = manifest_info
-                    cs = CutSet(
-                        LazyNeMoTarredIterator(
-                            manifest_path=manifest_path, tar_paths=tar_path, shuffle_shards=config.shuffle, **common_kwargs
-                        )
+                    nemo_iter = LazyNeMoTarredIterator(
+                        manifest_path=manifest_path, tar_paths=tar_path, shuffle_shards=config.shuffle, **common_kwargs
                     )
                 logging.info(f"- {manifest_path=} {weight=}")
-                cutsets.append(cs.repeat())
-                weights.append(weight)
-            cuts = CutSet.mux(*cutsets, weights=weights)
+                if config.max_open_streams is not None:
+                    for subiter in nemo_iter.to_shards():
+                        cutsets.append(CutSet(subiter))
+                        weights.append(weight)
+                else:
+                    cutsets.append(CutSet(nemo_iter))
+                    weights.append(weight)
+            if config.max_open_streams is not None:
+                cuts = CutSet.infinite_mux(
+                    cutsets,
+                    weights=weights,
+                    seed="trng",
+                    max_open_streams=config.max_open_streams
+                )
+            else:
+                cuts = CutSet.mux(*[cs.repeat() for cs in cutsets], weights=weights, seed="trng")
     else:
         logging.info(
             f"Initializing Lhotse CutSet from a single NeMo manifest (non-tarred): '{config.manifest_filepath}'"
