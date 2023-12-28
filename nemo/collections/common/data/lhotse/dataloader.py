@@ -2,7 +2,7 @@ import logging
 import random
 import warnings
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import torch.utils
 from omegaconf import OmegaConf
@@ -41,6 +41,7 @@ class LhotseDataLoadingConfig:
     shuffle_buffer_size: int = 10000
     drop_last: bool = True
     shard_seed: int | str = "trng"
+    max_open_streams: int | None = None
     # 3. Supported existing NeMo options.
     shuffle: bool = False
     sample_rate: int = 16000
@@ -61,6 +62,7 @@ class LhotseDataLoadingConfig:
     concatenate_gap_seconds: float = 0.1
     concatenate_duration_factor: float = 1.0
     concatenate_merge_supervisions: bool = True
+    db_norm: Optional[float] = -25.0  # from CodeSwitchingDataset
     # 5. Other Lhotse options.
     text_field: str = "text"  # key to read the transcript from
     lang_field: str = "lang"  # key to read the language tag from
@@ -182,6 +184,8 @@ def get_lhotse_dataloader_from_config(config, global_rank: int, world_size: int,
                 duration_factor=config.concatenate_duration_factor,
             )
         )
+        if config.db_norm is not None:
+            sampler = sampler.map(lambda cuts: cuts.normalize_loudness(config.db_norm, mix_first=False))
         if config.concatenate_merge_supervisions:
             sampler = sampler.map(lambda cuts: cuts.merge_supervisions())
 

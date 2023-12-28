@@ -151,11 +151,28 @@ class LazyNeMoTarredIterator(ImitatesDict):
             self.source = LazyIteratorChain(*self.shard_id_to_manifest.values())
 
         tar_paths = expand_sharded_filepaths(tar_paths)
-        self.shard_id_to_tar_path: dict[int, Path] = {int(strip_pipe(p).stem.split("_")[1]): p for p in tar_paths}
+        self.shard_id_to_tar_path: dict[int, str] = {int(strip_pipe(p).stem.split("_")[1]): p for p in tar_paths}
         self.shuffle_shards = shuffle_shards
         self.text_field = text_field
         self.lang_field = lang_field
         self._validate()
+
+    def to_shards(self) -> List["LazyNeMoTarredIterator"]:
+        """Convert this iterator to a list of separate iterators for each shard."""
+        if len(self.paths) == 1:
+            # Cannot do that if the JSON manifest is a single file for all shards;
+            # just return self.
+            return [self]
+        else:
+            return [
+                LazyNeMoTarredIterator(
+                    manifest_path=path,
+                    tar_paths=tarpath,
+                    shuffle_shards=False,
+                    text_field=self.text_field,
+                    lang_field=self.lang_field,
+                ) for path, tarpath in zip(self.paths, self.shard_id_to_tar_path.values())
+            ]
 
     def _validate(self) -> None:
         shard_ids_tars = set(self.shard_id_to_tar_path)
