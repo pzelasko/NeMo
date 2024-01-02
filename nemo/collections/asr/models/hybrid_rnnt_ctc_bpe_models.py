@@ -136,9 +136,7 @@ class EncDecHybridRNNTCTCBPEModel(EncDecHybridRNNTCTCModel, ASRBPEMixin):
                 config,
                 global_rank=self.global_rank,
                 world_size=self.world_size,
-                dataset=LhotseSpeechToTextBpeDataset(
-                    tokenizer=self.tokenizer,
-                ),
+                dataset=LhotseSpeechToTextBpeDataset(tokenizer=self.tokenizer,),
             )
 
         dataset = audio_to_text_dataset.get_audio_to_text_bpe_dataset_from_config(

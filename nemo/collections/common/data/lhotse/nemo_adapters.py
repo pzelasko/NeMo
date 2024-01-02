@@ -171,7 +171,8 @@ class LazyNeMoTarredIterator(ImitatesDict):
                     shuffle_shards=False,
                     text_field=self.text_field,
                     lang_field=self.lang_field,
-                ) for path, tarpath in zip(self.paths, self.shard_id_to_tar_path.values())
+                )
+                for path, tarpath in zip(self.paths, self.shard_id_to_tar_path.values())
             ]
 
     def _validate(self) -> None:

@@ -18,6 +18,7 @@ class LhotseDataLoadingConfig:
     The options not supported anymore but present, e.g., in old configs,
     will be emitted in a DeprecationWarning and ignored.
     """
+
     # 1. Data inputs.
     #   a. "Classic" NeMo input path fields.
     manifest_filepath: Any = None  # str | list[list[str | float]] | None = None
@@ -114,7 +115,9 @@ def get_lhotse_dataloader_from_config(config, global_rank: int, world_size: int,
     # 2.a. Noise mixing.
     if config.noise_path is not None:
         noise = CutSet.from_file(config.noise_path)
-        cuts = cuts.mix(cuts=noise, snr=config.noise_snr, mix_prob=config.noise_mix_prob, seed="trng", random_mix_offset=True)
+        cuts = cuts.mix(
+            cuts=noise, snr=config.noise_snr, mix_prob=config.noise_mix_prob, seed="trng", random_mix_offset=True
+        )
 
     # 2.b. On-the-fly speed perturbation.
     #    mux here ensures it's uniformly distributed throughout sampling,
@@ -179,10 +182,7 @@ def get_lhotse_dataloader_from_config(config, global_rank: int, world_size: int,
         # object with texts joined by a whitespace so that "regular" dataset classes don't
         # have to add a special support for multi-supervision cuts.
         sampler = sampler.map(
-            CutConcatenate(
-                gap=config.concatenate_gap_seconds,
-                duration_factor=config.concatenate_duration_factor,
-            )
+            CutConcatenate(gap=config.concatenate_gap_seconds, duration_factor=config.concatenate_duration_factor,)
         )
         if config.db_norm is not None:
             sampler = sampler.map(lambda cuts: cuts.normalize_loudness(config.db_norm, mix_first=False))
@@ -239,11 +239,9 @@ def make_structured_with_schema_warnings(config):
     unsupported_keys = received_keys - supported_keys
     if unsupported_keys:
         warnings.warn(
-            f"The following configuration keys are no longer supported "
-            f"and ignored: {','.join(unsupported_keys)}",
+            f"The following configuration keys are no longer supported " f"and ignored: {','.join(unsupported_keys)}",
             category=DeprecationWarning,
         )
     config = OmegaConf.masked_copy(config, list(supported_keys))
 
     return OmegaConf.merge(default, config)
-

@@ -54,9 +54,7 @@ def read_lhotse_manifest(config, is_tarred: bool) -> LhotseCutSet:
         if config.cuts_path is not None:
             warnings.warn("Note: lhotse.cuts_path will be ignored because lhotse.shar_path was provided.")
         if isinstance(config.shar_path, (str, Path)):
-            logging.info(
-                f"Initializing Lhotse Shar CutSet (tarred) from a single data source: '{config.shar_path}'"
-            )
+            logging.info(f"Initializing Lhotse Shar CutSet (tarred) from a single data source: '{config.shar_path}'")
             cuts = CutSet.from_shar(in_dir=config.shar_path, shuffle_shards=True, seed=shard_seed).repeat()
         else:
             # Multiple datasets in Lhotse Shar format: we will dynamically multiplex them
@@ -160,10 +158,7 @@ def read_nemo_manifest(config, is_tarred: bool) -> LhotseCutSet:
                     weights.append(weight)
             if config.max_open_streams is not None:
                 cuts = CutSet.infinite_mux(
-                    cutsets,
-                    weights=weights,
-                    seed="trng",
-                    max_open_streams=config.max_open_streams
+                    cutsets, weights=weights, seed="trng", max_open_streams=config.max_open_streams
                 )
             else:
                 cuts = CutSet.mux(*[cs.repeat() for cs in cutsets], weights=weights, seed="trng")

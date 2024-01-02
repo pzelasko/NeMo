@@ -532,7 +532,7 @@ def test_dataloader_from_nemo_manifest_with_text_field(nemo_manifest_path: Path,
             "batch_size": 2,
             # lhotse specific
             "use_bucketing": False,
-            **kwarg
+            **kwarg,
         }
     )
 
@@ -559,7 +559,7 @@ def test_dataloader_from_nemo_manifest_with_lang_field(nemo_manifest_path: Path,
             "batch_size": 2,
             # lhotse specific
             "use_bucketing": False,
-            **kwarg
+            **kwarg,
         }
     )
 
