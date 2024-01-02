@@ -438,6 +438,63 @@ def test_dataloader_from_tarred_nemo_manifest_multi_max_open_streams(nemo_tarred
     b = next(iter(dl))
 
 
+def test_dataloader_from_tarred_nemo_manifest_concat(nemo_tarred_manifest_path: tuple[str, str]):
+    json_mft, tar_mft = nemo_tarred_manifest_path
+    config = OmegaConf.create(
+        {
+            "manifest_filepath": json_mft,
+            "tarred_audio_filepaths": tar_mft,
+            "sample_rate": 16000,
+            "shuffle": True,
+            "use_lhotse": True,
+            "num_workers": 0,
+            # lhotse specific
+            "concatenate_samples": True,
+            "concatenate_duration_factor": 3.0,
+            "batch_duration": 4.0,
+            "quadratic_duration": 15.0,  # seconds
+            "use_bucketing": False,
+            "drop_last": False,
+            "shuffle_buffer_size": 10,
+            "seed": 0,
+        }
+    )
+
+    dl = get_lhotse_dataloader_from_config(
+        config=config, global_rank=0, world_size=1, dataset=UnsupervisedAudioDataset()
+    )
+
+    batches = [batch for batch in dl]
+
+    print(batches)
+    print(batches[0])
+
+    assert len(batches) == 4
+
+    # the first element has been concatenated: 2x16000 speech (2x1s) + 1600 gap (0.1s)
+    expected_audio_lens = torch.tensor([33600, 16000], dtype=torch.int32)
+
+    b = batches[0]
+    assert set(b.keys()) == {"audio", "audio_lens", "ids"}
+    assert b["audio"].shape[0] == b["audio_lens"].shape[0] == 2
+    torch.testing.assert_close(b["audio_lens"], expected_audio_lens)
+
+    b = batches[1]
+    assert set(b.keys()) == {"audio", "audio_lens", "ids"}
+    assert b["audio"].shape[0] == b["audio_lens"].shape[0] == 2
+    torch.testing.assert_close(b["audio_lens"], expected_audio_lens)
+
+    b = batches[2]
+    assert set(b.keys()) == {"audio", "audio_lens", "ids"}
+    assert b["audio"].shape[0] == b["audio_lens"].shape[0] == 2
+    torch.testing.assert_close(b["audio_lens"], expected_audio_lens)
+
+    b = batches[3]
+    assert set(b.keys()) == {"audio", "audio_lens", "ids"}
+    assert b["audio"].shape[0] == b["audio_lens"].shape[0] == 1
+    torch.testing.assert_close(b["audio_lens"], torch.tensor([16000], dtype=torch.int32))
+
+
 def test_dataloader_from_lhotse_shar_cuts_combine_datasets_unweighted(
     cutset_shar_path: Path, cutset_shar_path_other: Path
 ):
