@@ -160,7 +160,7 @@ def read_nemo_manifest(config, is_tarred: bool) -> LhotseCutSet:
                     weights.append(weight)
             if config.max_open_streams is not None:
                 cuts = CutSet.infinite_mux(
-                    cutsets,
+                    *cutsets,
                     weights=weights,
                     seed="trng",
                     max_open_streams=config.max_open_streams
