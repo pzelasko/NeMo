@@ -26,6 +26,7 @@ class LhotseDataLoadingConfig:
     #   b. Lhotse CutSet manifest / Lhotse Shar tar dir paths.
     cuts_path: str | None = None
     shar_path: Any = None  # str | list[str | tuple[str, float | int]] | None = None
+
     # 2. Batch size.
     #   a. Existing NeMo options.
     batch_size: int | None = None
@@ -43,6 +44,7 @@ class LhotseDataLoadingConfig:
     drop_last: bool = True
     shard_seed: int | str = "trng"
     max_open_streams: int | None = None
+
     # 3. Supported existing NeMo options.
     shuffle: bool = False
     sample_rate: int = 16000
@@ -51,6 +53,7 @@ class LhotseDataLoadingConfig:
     seed: int = 0
     num_workers: int = 0
     pin_memory: bool = False
+
     # 4. Optional Lhotse data augmentation.
     #   a. On-the-fly noise/audio mixing.
     noise_path: str | None = None
@@ -64,6 +67,7 @@ class LhotseDataLoadingConfig:
     concatenate_duration_factor: float = 1.0
     concatenate_merge_supervisions: bool = True
     db_norm: Optional[float] = -25.0  # from CodeSwitchingDataset
+
     # 5. Other Lhotse options.
     text_field: str = "text"  # key to read the transcript from
     lang_field: str = "lang"  # key to read the language tag from
