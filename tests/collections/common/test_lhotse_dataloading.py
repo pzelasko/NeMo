@@ -1,4 +1,3 @@
-import os
 from io import BytesIO
 from itertools import islice
 from pathlib import Path
@@ -96,7 +95,8 @@ def nemo_tarred_manifest_path(nemo_manifest_path: Path) -> Tuple[str, str]:
     ) as mft_writer:
         for idx, d in enumerate(load_jsonl(nemo_manifest_path)):
             p = d["audio_filepath"]
-            tar_writer.write(p, BytesIO(open(p, "rb").read()))
+            with open(p, "rb") as f:
+                tar_writer.write(p, BytesIO(f.read()))
             mft_writer.write({**d, "audio_filepath": Path(p).name, "shard_id": int(idx > 4)})
     return mft_writer.path, f"{root}/audios__OP_0..1_CL_.tar"
 
@@ -435,7 +435,7 @@ def test_dataloader_from_tarred_nemo_manifest_multi_max_open_streams(nemo_tarred
         config=config, global_rank=0, world_size=1, dataset=UnsupervisedAudioDataset()
     )
 
-    b = next(iter(dl))
+    _ = next(iter(dl))
 
 
 def test_dataloader_from_tarred_nemo_manifest_concat(nemo_tarred_manifest_path: tuple[str, str]):
