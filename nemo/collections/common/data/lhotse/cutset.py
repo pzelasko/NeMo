@@ -1,5 +1,6 @@
 import logging
 import warnings
+from functools import partial
 from pathlib import Path
 from typing import Any, NewType, Sequence, Tuple
 
@@ -127,22 +128,35 @@ def read_dataset_config(config) -> tuple[LhotseCutSet, bool]:
     cuts, is_tarred = parse_and_combine_datasets(config.input_config, max_open_streams=config.get("max_open_streams"), propagate_attrs=propagate_attrs)
     return cuts, is_tarred
 
+
 def parse_group(grp_cfg) -> [LhotseCutSet, bool]:
     assert grp_cfg.type in KNOWN_DATASET_CONFIG_TYPES, f"Unknown item type in dataset config list: {grp_cfg.type=}"
     if grp_cfg.type == "nemo_tarred":
         is_tarred = True
-        return read_nemo_manifest(grp_cfg, is_tarred=is_tarred), is_tarred
-    if grp_cfg.type == "nemo":
+        cuts = read_nemo_manifest(grp_cfg, is_tarred=is_tarred)
+    elif grp_cfg.type == "nemo":
         is_tarred = False
-        return read_nemo_manifest(grp_cfg, is_tarred=is_tarred), is_tarred
-    if grp_cfg.type == "lhotse_shar":
+        cuts = read_nemo_manifest(grp_cfg, is_tarred=is_tarred)
+    elif grp_cfg.type == "lhotse_shar":
         is_tarred = True
-        return read_lhotse_manifest(grp_cfg, is_tarred=is_tarred), is_tarred
-    if grp_cfg.type == "lhotse":
+        cuts = read_lhotse_manifest(grp_cfg, is_tarred=is_tarred)
+    elif grp_cfg.type == "lhotse":
         is_tarred = False
-        return read_lhotse_manifest(grp_cfg, is_tarred=is_tarred), is_tarred
-    if grp_cfg.type == "group":
-        return parse_and_combine_datasets(grp_cfg.components, max_open_streams=grp_cfg.get("max_open_streams"))
+        cuts = read_lhotse_manifest(grp_cfg, is_tarred=is_tarred)
+    elif grp_cfg.type == "group":
+        cuts, is_tarred = parse_and_combine_datasets(grp_cfg.components, max_open_streams=grp_cfg.get("max_open_streams"))
+    else:
+        raise ValueError(f"Unrecognized group: {grp_cfg.type}")
+    # Attach extra tags to every utterance dynamically, if provided.
+    if (extra_tags := grp_cfg.get("extra_tags")) is not None:
+        cuts = cuts.map(partial(attach_tags, tags=extra_tags))
+    return cuts, is_tarred
+
+
+def attach_tags(cut, tags: dict):
+    for key, val in tags.items():
+        setattr(cut, key, val)
+    return cut
 
 
 def parse_and_combine_datasets(config_list, max_open_streams: int | None = None, propagate_attrs: dict | None = None) -> tuple[LhotseCutSet, bool]:
