@@ -116,12 +116,14 @@ def read_dataset_config(config) -> tuple[LhotseCutSet, bool]:
     """
     propagate_attrs = {
         "shuffle": config.shuffle,
-        "lhotse": {
+        "lhotse": {},
+    }
+    if config.get("lhotse") is not None:
+        propagate_attrs["lhotse"] = {
             "shar_seed": config.lhotse.get("shar_seed", "trng"),
             "text_field": config.lhotse.get("text_field", "text"),
             "lang_field": config.lhotse.get("lang_field", "lang"),
-        },
-    }
+        }
     cuts, is_tarred = parse_and_combine_datasets(config.input_config, max_open_streams=config.get("max_open_streams"), propagate_attrs=propagate_attrs)
     return cuts, is_tarred
 
